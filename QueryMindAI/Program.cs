@@ -34,6 +34,11 @@ builder.Services.AddScoped<
     IQueryExecutionService,
     QueryExecutionService>();
 
+builder.Services.AddScoped<
+    IQuestionSafetyValidator,
+    QuestionSafetyValidator>();
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

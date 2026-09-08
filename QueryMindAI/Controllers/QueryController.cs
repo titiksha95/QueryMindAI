@@ -15,12 +15,15 @@ namespace QueryMindAI.Controllers
             _sqlSafetyValidator;
         private readonly IQueryExecutionService
             _queryExecutionService;
+        private readonly IQuestionSafetyValidator
+            _questionSafetyValidator;
 
         public QueryController(
-            IDatabaseSchemaService databaseSchemaService,
-            IAiSqlGeneratorService aiSqlGeneratorService,
-            ISqlSafetyValidator sqlSafetyValidator,
-            IQueryExecutionService queryExecutionService)
+             IDatabaseSchemaService databaseSchemaService,
+             IAiSqlGeneratorService aiSqlGeneratorService,
+             ISqlSafetyValidator sqlSafetyValidator,
+             IQueryExecutionService queryExecutionService,
+             IQuestionSafetyValidator questionSafetyValidator)
         {
             _databaseSchemaService =
                 databaseSchemaService;
@@ -33,6 +36,9 @@ namespace QueryMindAI.Controllers
 
             _queryExecutionService =
                 queryExecutionService;
+
+            _questionSafetyValidator =
+                questionSafetyValidator;
         }
 
         [HttpGet]
@@ -68,6 +74,23 @@ namespace QueryMindAI.Controllers
 
                 if (!ModelState.IsValid)
                 {
+                    return View(model);
+                }
+                
+
+                // Validate the user's request before calling Gemini
+                if (!_questionSafetyValidator.IsSafe(
+                    model.Question,
+                    out string questionSafetyMessage))
+                {
+                    model.IsSqlSafe = false;
+
+                    model.SqlValidationMessage =
+                        questionSafetyMessage;
+
+                    model.GeneratedSql =
+                        string.Empty;
+
                     return View(model);
                 }
 
