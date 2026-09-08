@@ -1,0 +1,224 @@
+﻿@model QueryMindAI.ViewModels.QueryAssistantViewModel
+
+@{
+    ViewData["Title"] = "QueryMind AI";
+}
+
+<div class="container py-4">
+    <div class="text-center mb-4">
+        <h1 class="display-5 fw-bold">
+            QueryMind AI
+        </h1>
+
+        <p class="text-muted">
+            Ask questions about your database using
+            simple English.
+        </p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(
+        Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong>
+            @Model.ErrorMessage
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-success">
+            Database connected successfully.
+
+            <strong>
+                @Model.AvailableTables.Count
+            </strong>
+
+            tables were found.
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h4 class="mb-3">
+                        Ask the database
+                    </h4>
+
+                    <form asp-controller="Query"
+                          asp-action="Index"
+                          method="post">
+                        <div class="mb-3">
+                            <label asp-for="Question"
+                                   class="form-label">
+                            </label>
+
+                            <textarea asp-for="Question"
+                                      class="form-control"
+                                      rows="4"
+                                      placeholder="Example: Show all employees from the IT department">
+                            </textarea>
+
+                            <span asp-validation-for="Question"
+                                  class="text-danger">
+                            </span>
+                        </div>
+
+                        <button type="submit"
+                                class="btn btn-primary">
+                            Generate SQL
+                        </button>
+                    </form>
+                    @if (Model.IsSqlSafe == true)
+                    {
+                        <div class="alert alert-success mt-3">
+                            <strong>Safe query:</strong>
+                            @Model.SqlValidationMessage
+                        </div>
+                    }
+                    else if (Model.IsSqlSafe == false)
+                    {
+                        <div class="alert alert-danger mt-3">
+                            <strong>Unsafe query blocked:</strong>
+                            @Model.SqlValidationMessage
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(
+                        Model.GeneratedSql))
+                    {
+                        <div class="mt-4">
+                            <label class="form-label fw-bold">
+                                Generated SQL
+                            </label>
+
+                            <pre class="bg-dark text-light p-3 rounded"><code>@Model.GeneratedSql</code></pre>
+                        </div>
+                    }
+                    @if (Model.IsSqlSafe == true &&
+                       !string.IsNullOrWhiteSpace(Model.GeneratedSql))
+                    {
+                        <form asp-controller="Query"
+                              asp-action="Execute"
+                              method="post"
+                              class="mt-3">
+
+                            <input asp-for="Question"
+                                   type="hidden" />
+
+                            <input asp-for="GeneratedSql"
+                                   type="hidden" />
+
+                            <button type="submit"
+                                    class="btn btn-success">
+                                Execute Query
+                            </button>
+                        </form>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(
+                        Model.DatabaseSchema))
+                    {
+                        <details class="mt-4">
+                            <summary class="fw-bold">
+                                View detected database schema
+                            </summary>
+
+                            <pre class="bg-light border p-3 mt-2 rounded"
+                                 style="max-height: 400px;
+                            overflow: auto;"><code>@Model.DatabaseSchema</code></pre>
+                        </details>
+                    }
+                </div>
+            </div>
+        </div>
+        @if (Model.ResultColumns.Count > 0)
+        {
+            <div class="card shadow-sm mt-4">
+                <div class="card-header
+                    d-flex
+                    justify-content-between">
+                    <strong>Query Results</strong>
+
+                    <span>
+                        @Model.ResultRows.Count rows,
+                        @Model.ExecutionTimeMs ms
+                    </span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table
+                        table-bordered
+                        table-striped
+                        table-hover
+                        mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                @foreach (
+                                    string column
+                                    in Model.ResultColumns)
+                                {
+                                    <th>@column</th>
+                                }
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (
+                                Dictionary<string, object?> row
+                                in Model.ResultRows)
+                            {
+                                <tr>
+                                    @foreach (
+                                        string column
+                                        in Model.ResultColumns)
+                                    {
+                                        <td>
+                                            @(row[column]?.ToString()
+                                                ?? "NULL")
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    Available Tables
+                </div>
+
+                <div class="card-body"
+                     style="max-height: 400px;
+                    overflow-y: auto;">
+
+                    @if (Model.AvailableTables.Count == 0)
+                    {
+                        <p class="text-muted mb-0">
+                            No tables found.
+                        </p>
+                    }
+                    else
+                    {
+                        <ul class="list-group">
+                            @foreach (
+                                string tableName
+                                in Model.AvailableTables)
+                            {
+                                <li class="list-group-item">
+                                    @tableName
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <partial name="_ValidationScriptsPartial" />
+}
