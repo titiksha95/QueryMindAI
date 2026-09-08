@@ -76,11 +76,8 @@ Results are displayed dynamically
 * JSON
 * Razor Views
 * Bootstrap
-* Dependency Injection
-* Async/await
 * Microsoft.Data.SqlClient
 * Microsoft.SqlServer.TransactSql.ScriptDom
-* Visual Studio User Secrets
 
 ## Project Structure
 
@@ -369,6 +366,4 @@ Before using it with a production or company database:
 
 ## Author
 
-**Titiksha Jangid**
-
-B.Tech Artificial Intelligence and Machine Learning student with an interest in AI-powered applications, ASP.NET Core, SQL Server, and full-stack development.
+**Titiksha**
