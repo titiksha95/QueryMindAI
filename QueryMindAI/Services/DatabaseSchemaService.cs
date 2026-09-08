@@ -60,19 +60,19 @@ namespace QueryMindAI.Services
             StringBuilder schemaBuilder = new();
 
             const string sql = """
-        SELECT
-            TABLE_SCHEMA,
-            TABLE_NAME,
-            COLUMN_NAME,
-            DATA_TYPE,
-            IS_NULLABLE,
-            CHARACTER_MAXIMUM_LENGTH
-        FROM INFORMATION_SCHEMA.COLUMNS
-        ORDER BY
-            TABLE_SCHEMA,
-            TABLE_NAME,
-            ORDINAL_POSITION;
-        """;
+            SELECT
+                TABLE_SCHEMA,
+                TABLE_NAME,
+                COLUMN_NAME,
+                DATA_TYPE,
+                IS_NULLABLE,
+                CHARACTER_MAXIMUM_LENGTH
+            FROM INFORMATION_SCHEMA.COLUMNS
+            ORDER BY
+                TABLE_SCHEMA,
+                TABLE_NAME,
+                ORDINAL_POSITION;
+            """;
 
             await using SqlConnection connection =
                 new SqlConnection(_connectionString);
