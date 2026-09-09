@@ -34,5 +34,8 @@ namespace QueryMindAI.ViewModels
 
         public long ExecutionTimeMs { get; set; }
 
+        public List<string> SelectedTables { get; set; } =
+            new();
+
     }
 }

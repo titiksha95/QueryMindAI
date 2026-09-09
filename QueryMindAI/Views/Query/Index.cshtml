@@ -45,7 +45,8 @@
                         Ask the database
                     </h4>
 
-                    <form asp-controller="Query"
+                    <form id="queryForm"
+                          asp-controller="Query"
                           asp-action="Index"
                           method="post">
                         <div class="mb-3">
@@ -107,6 +108,12 @@
 
                             <input asp-for="GeneratedSql"
                                    type="hidden" />
+                            @foreach (string selectedTable in Model.SelectedTables)
+                            {
+                                <input type="hidden"
+                                       name="SelectedTables"
+                                       value="@selectedTable" />
+                            }
 
                             <button type="submit"
                                     class="btn btn-success">
@@ -183,34 +190,88 @@
                 </div>
             </div>
         }
-        <div class="col-lg-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-dark text-white">
-                    Available Tables
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">
+                Available Tables
+            </div>
+
+            <div class="card-body">
+                <input type="text"
+                       id="tableSearch"
+                       class="form-control mb-3"
+                       placeholder="Search tables..." />
+
+                <div class="d-flex
+                    justify-content-between
+                    align-items-center
+                    mb-2">
+                    <small class="text-muted">
+                        Select up to 10 tables
+                    </small>
+
+                    <small>
+                        <span id="selectedTableCount">
+                            @Model.SelectedTables.Count
+                        </span>/10 selected
+                    </small>
                 </div>
 
-                <div class="card-body"
-                     style="max-height: 400px;
+                <span asp-validation-for="SelectedTables"
+                      class="text-danger d-block mb-2">
+                </span>
+
+                <div id="tableList"
+                     style="max-height: 420px;
                     overflow-y: auto;">
 
-                    @if (Model.AvailableTables.Count == 0)
+                    @for (int index = 0;
+                          index < Model.AvailableTables.Count;
+                          index++)
                     {
-                        <p class="text-muted mb-0">
-                            No tables found.
-                        </p>
-                    }
-                    else
-                    {
-                        <ul class="list-group">
-                            @foreach (
-                                string tableName
-                                in Model.AvailableTables)
+                        string tableName =
+                            Model.AvailableTables[index];
+
+                        string checkboxId =
+                            $"table_{index}";
+
+                        bool isSelected =
+                            Model.SelectedTables.Contains(
+                                tableName,
+                                StringComparer.OrdinalIgnoreCase);
+
+                        <div class="form-check
+                            border-bottom
+                            py-2
+                            table-item">
+
+                            @if (isSelected)
                             {
-                                <li class="list-group-item">
-                                    @tableName
-                                </li>
+                                <input class="form-check-input
+                                table-checkbox"
+                                       type="checkbox"
+                                       name="SelectedTables"
+                                       value="@tableName"
+                                       id="@checkboxId"
+                                       form="queryForm"
+                                       checked />
                             }
-                        </ul>
+                            else
+                            {
+                                <input class="form-check-input
+                                table-checkbox"
+                                       type="checkbox"
+                                       name="SelectedTables"
+                                       value="@tableName"
+                                       id="@checkboxId"
+                                       form="queryForm" />
+                            }
+
+                            <label class="form-check-label"
+                                   for="@checkboxId">
+                                @tableName
+                            </label>
+                        </div>
                     }
                 </div>
             </div>
@@ -221,4 +282,74 @@
 @section Scripts
 {
     <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        const searchInput =
+            document.getElementById("tableSearch");
+
+        const tableItems =
+            document.querySelectorAll(".table-item");
+
+        const checkboxes =
+            document.querySelectorAll(".table-checkbox");
+
+        const selectedCount =
+            document.getElementById(
+                "selectedTableCount");
+
+        searchInput.addEventListener(
+            "input",
+            function () {
+
+                const searchText =
+                    this.value
+                        .toLowerCase()
+                        .trim();
+
+                tableItems.forEach(function (item) {
+                    const tableName =
+                        item.textContent
+                            .toLowerCase();
+
+                    item.style.display =
+                        tableName.includes(searchText)
+                            ? ""
+                            : "none";
+                });
+            });
+
+        function updateSelectedCount() {
+            const checkedCount =
+                document.querySelectorAll(
+                    ".table-checkbox:checked"
+                ).length;
+
+            selectedCount.textContent =
+                checkedCount;
+        }
+
+        checkboxes.forEach(function (checkbox) {
+            checkbox.addEventListener(
+                "change",
+                function () {
+
+                    const checkedCount =
+                        document.querySelectorAll(
+                            ".table-checkbox:checked"
+                        ).length;
+
+                    if (checkedCount > 10) {
+                        this.checked = false;
+
+                        alert(
+                            "You can select a maximum " +
+                            "of 10 tables.");
+                    }
+
+                    updateSelectedCount();
+                });
+        });
+
+        updateSelectedCount();
+    </script>
 }

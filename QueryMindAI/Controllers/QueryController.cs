@@ -64,21 +64,22 @@ namespace QueryMindAI.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Index(
-        QueryAssistantViewModel model)
+    QueryAssistantViewModel model)
         {
             try
             {
+                // Load all table names for the right-side list
                 model.AvailableTables =
                     await _databaseSchemaService
                         .GetTableNamesAsync();
 
+                // Validate the question field
                 if (!ModelState.IsValid)
                 {
                     return View(model);
                 }
-                
 
-                // Validate the user's request before calling Gemini
+                // Block dangerous user requests
                 if (!_questionSafetyValidator.IsSafe(
                     model.Question,
                     out string questionSafetyMessage))
@@ -94,18 +95,58 @@ namespace QueryMindAI.Controllers
                     return View(model);
                 }
 
-                // Temporary SQL for testing the form.
-                // AI generation will replace this later.
+                // User must select at least one table
+                if (model.SelectedTables == null ||
+                    model.SelectedTables.Count == 0)
+                {
+                    ModelState.AddModelError(
+                        nameof(model.SelectedTables),
+                        "Select at least one table.");
+
+                    return View(model);
+                }
+
+                // Prevent sending too many tables to Gemini
+                if (model.SelectedTables.Count > 10)
+                {
+                    ModelState.AddModelError(
+                        nameof(model.SelectedTables),
+                        "Select a maximum of 10 tables.");
+
+                    return View(model);
+                }
+
+                // Ensure posted table names exist in the database
+                bool containsInvalidTable =
+                    model.SelectedTables.Any(
+                        selectedTable =>
+                            !model.AvailableTables.Contains(
+                                selectedTable,
+                                StringComparer.OrdinalIgnoreCase));
+
+                if (containsInvalidTable)
+                {
+                    ModelState.AddModelError(
+                        nameof(model.SelectedTables),
+                        "One or more selected tables are invalid.");
+
+                    return View(model);
+                }
+
+                // Load schema for only the selected tables
                 model.DatabaseSchema =
-                await _databaseSchemaService
-                    .GetDatabaseSchemaAsync();
+                    await _databaseSchemaService
+                        .GetSelectedTablesSchemaAsync(
+                            model.SelectedTables);
 
+                // Send the question and selected schema to Gemini
                 model.GeneratedSql =
-                await _aiSqlGeneratorService
-                    .GenerateSqlAsync(
-                        model.Question,
-                        model.DatabaseSchema);
+                    await _aiSqlGeneratorService
+                        .GenerateSqlAsync(
+                            model.Question,
+                            model.DatabaseSchema);
 
+                // Validate Gemini's generated SQL
                 SqlValidationResult validationResult =
                     _sqlSafetyValidator.Validate(
                         model.GeneratedSql);
@@ -121,12 +162,14 @@ namespace QueryMindAI.Controllers
             catch (Exception ex)
             {
                 model.ErrorMessage =
-                    "An error occurred: " + ex.Message;
+                    "An error occurred: "
+                    + ex.Message;
 
                 return View(model);
             }
-
         }
+
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Execute(
