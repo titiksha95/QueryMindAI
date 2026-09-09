@@ -4,275 +4,607 @@
     ViewData["Title"] = "QueryMind AI";
 }
 
-<div class="container py-4">
-    <div class="text-center mb-4">
-        <h1 class="display-5 fw-bold">
-            QueryMind AI
-        </h1>
-
-        <p class="text-muted">
-            Ask questions about your database using
-            simple English.
-        </p>
-    </div>
-
-    @if (!string.IsNullOrWhiteSpace(
-        Model.ErrorMessage))
-    {
-        <div class="alert alert-danger">
-            <strong>Error:</strong>
-            @Model.ErrorMessage
-        </div>
-    }
-    else
-    {
-        <div class="alert alert-success">
-            Database connected successfully.
-
-            <strong>
-                @Model.AvailableTables.Count
-            </strong>
-
-            tables were found.
-        </div>
+<style>
+    body {
+        background: #f5f7fb;
     }
 
-    <div class="row">
-        <div class="col-lg-8">
-            <div class="card shadow-sm">
-                <div class="card-body p-4">
-                    <h4 class="mb-3">
-                        Ask the database
-                    </h4>
+    .query-page {
+        max-width: 1450px;
+        margin: auto;
+    }
 
-                    <form id="queryForm"
-                          asp-controller="Query"
-                          asp-action="Index"
-                          method="post">
-                        <div class="mb-3">
-                            <label asp-for="Question"
-                                   class="form-label">
-                            </label>
+    .hero-section {
+        padding: 32px;
+        margin-bottom: 24px;
+        color: white;
+        border-radius: 20px;
+        background: linear-gradient( 135deg, #172554, #2563eb );
+        box-shadow: 0 15px 35px rgba(37, 99, 235, 0.18);
+    }
 
-                            <textarea asp-for="Question"
-                                      class="form-control"
-                                      rows="4"
-                                      placeholder="Example: Show all employees from the IT department">
-                            </textarea>
+    .hero-title {
+        margin-bottom: 8px;
+        font-size: 2.3rem;
+        font-weight: 750;
+    }
 
-                            <span asp-validation-for="Question"
-                                  class="text-danger">
-                            </span>
-                        </div>
+    .hero-description {
+        max-width: 700px;
+        margin-bottom: 0;
+        color: #dbeafe;
+        font-size: 1.05rem;
+    }
 
-                        <button type="submit"
-                                class="btn btn-primary">
-                            Generate SQL
-                        </button>
-                    </form>
-                    @if (Model.IsSqlSafe == true)
-                    {
-                        <div class="alert alert-success mt-3">
-                            <strong>Safe query:</strong>
-                            @Model.SqlValidationMessage
-                        </div>
-                    }
-                    else if (Model.IsSqlSafe == false)
-                    {
-                        <div class="alert alert-danger mt-3">
-                            <strong>Unsafe query blocked:</strong>
-                            @Model.SqlValidationMessage
-                        </div>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(
-                        Model.GeneratedSql))
-                    {
-                        <div class="mt-4">
-                            <label class="form-label fw-bold">
-                                Generated SQL
-                            </label>
+    .query-card {
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: white;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
 
-                            <pre class="bg-dark text-light p-3 rounded"><code>@Model.GeneratedSql</code></pre>
-                        </div>
-                    }
-                    @if (Model.IsSqlSafe == true &&
-                       !string.IsNullOrWhiteSpace(Model.GeneratedSql))
-                    {
-                        <form asp-controller="Query"
-                              asp-action="Execute"
-                              method="post"
-                              class="mt-3">
+    .query-card-header {
+        padding: 20px 22px;
+        border-bottom: 1px solid #e2e8f0;
+    }
 
-                            <input asp-for="Question"
-                                   type="hidden" />
+        .query-card-header h2 {
+            margin: 0;
+            color: #0f172a;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
 
-                            <input asp-for="GeneratedSql"
-                                   type="hidden" />
-                            @foreach (string selectedTable in Model.SelectedTables)
-                            {
-                                <input type="hidden"
-                                       name="SelectedTables"
-                                       value="@selectedTable" />
-                            }
+        .query-card-header p {
+            margin: 5px 0 0;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
 
-                            <button type="submit"
-                                    class="btn btn-success">
-                                Execute Query
-                            </button>
-                        </form>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(
-                        Model.DatabaseSchema))
-                    {
-                        <details class="mt-4">
-                            <summary class="fw-bold">
-                                View detected database schema
-                            </summary>
+    .query-card-body {
+        padding: 22px;
+    }
 
-                            <pre class="bg-light border p-3 mt-2 rounded"
-                                 style="max-height: 400px;
-                            overflow: auto;"><code>@Model.DatabaseSchema</code></pre>
-                        </details>
-                    }
-                </div>
+    .question-input {
+        min-height: 155px;
+        padding: 16px;
+        resize: vertical;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        font-size: 1rem;
+    }
+
+        .question-input:focus,
+        .table-search:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        }
+
+    .generate-button {
+        padding: 11px 22px;
+        border: none;
+        border-radius: 10px;
+        background: #2563eb;
+        font-weight: 600;
+    }
+
+        .generate-button:hover {
+            background: #1d4ed8;
+        }
+
+    .schema-panel {
+        position: sticky;
+        top: 18px;
+    }
+
+    .table-search {
+        padding: 11px 13px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+    }
+
+    .table-list {
+        max-height: 520px;
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+
+    .table-item {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 11px 12px;
+        margin-bottom: 7px;
+        border: 1px solid #e2e8f0;
+        border-radius: 9px;
+        background: #f8fafc;
+        transition: 0.15s ease;
+    }
+
+        .table-item:hover {
+            border-color: #93c5fd;
+            background: #eff6ff;
+        }
+
+        .table-item:has( .table-checkbox:checked) {
+            border-color: #60a5fa;
+            background: #dbeafe;
+        }
+
+    .table-checkbox {
+        width: 17px;
+        height: 17px;
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .table-label {
+        width: 100%;
+        overflow: hidden;
+        color: #334155;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    .selected-badge {
+        padding: 6px 10px;
+        border-radius: 20px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+    .sql-container {
+        position: relative;
+        margin-top: 22px;
+    }
+
+    .sql-code {
+        min-height: 75px;
+        margin: 0;
+        padding: 20px;
+        padding-right: 90px;
+        overflow-x: auto;
+        border-radius: 12px;
+        background: #111827;
+        color: #bfdbfe;
+        font-size: 0.92rem;
+        line-height: 1.7;
+        white-space: pre-wrap;
+    }
+
+    .copy-button {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        padding: 6px 11px;
+        border: 1px solid #475569;
+        border-radius: 7px;
+        background: #1e293b;
+        color: white;
+        font-size: 0.78rem;
+    }
+
+        .copy-button:hover {
+            background: #334155;
+        }
+
+    .execute-button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 10px;
+        background: #059669;
+        font-weight: 600;
+    }
+
+        .execute-button:hover {
+            background: #047857;
+        }
+
+    .result-card {
+        margin-top: 24px;
+    }
+
+    .result-information {
+        color: #64748b;
+        font-size: 0.85rem;
+    }
+
+    .result-table th {
+        padding: 13px;
+        background: #172554;
+        color: white;
+        white-space: nowrap;
+    }
+
+    .result-table td {
+        max-width: 350px;
+        padding: 12px 13px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .schema-details {
+        margin-top: 20px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: white;
+    }
+
+        .schema-details summary {
+            padding: 15px 18px;
+            color: #334155;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+    .schema-code {
+        max-height: 350px;
+        margin: 0 15px 15px;
+        padding: 16px;
+        overflow: auto;
+        border-radius: 9px;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 0.85rem;
+    }
+
+    .empty-tables {
+        padding: 30px 15px;
+        color: #64748b;
+        text-align: center;
+    }
+
+    @@media (max-width: 991px) {
+        .schema-panel {
+            position: static;
+        }
+
+        .hero-title {
+            font-size: 1.8rem;
+        }
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="query-page">
+
+        <section class="hero-section">
+            <div class="hero-title">
+                QueryMind AI
             </div>
-        </div>
-        @if (Model.ResultColumns.Count > 0)
+
+            <p class="hero-description">
+                Ask questions in simple English,
+                generate safe SQL, and explore your
+                database without writing queries manually.
+            </p>
+        </section>
+
+        @if (!string.IsNullOrWhiteSpace(
+            Model.ErrorMessage))
         {
-            <div class="card shadow-sm mt-4">
-                <div class="card-header
-                    d-flex
-                    justify-content-between">
-                    <strong>Query Results</strong>
+            <div class="alert alert-danger
+                border-0 shadow-sm">
+                <strong>Error:</strong>
+                @Model.ErrorMessage
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-success
+                border-0 shadow-sm">
+                Database connected successfully.
 
-                    <span>
-                        @Model.ResultRows.Count rows,
-                        @Model.ExecutionTimeMs ms
-                    </span>
-                </div>
+                <strong>
+                    @Model.AvailableTables.Count
+                </strong>
 
-                <div class="table-responsive">
-                    <table class="table
-                        table-bordered
-                        table-striped
-                        table-hover
-                        mb-0">
-                        <thead class="table-dark">
-                            <tr>
-                                @foreach (
-                                    string column
-                                    in Model.ResultColumns)
-                                {
-                                    <th>@column</th>
-                                }
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            @foreach (
-                                Dictionary<string, object?> row
-                                in Model.ResultRows)
-                            {
-                                <tr>
-                                    @foreach (
-                                        string column
-                                        in Model.ResultColumns)
-                                    {
-                                        <td>
-                                            @(row[column]?.ToString()
-                                                ?? "NULL")
-                                        </td>
-                                    }
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                tables were found.
             </div>
         }
 
-        <div class="card shadow-sm">
-            <div class="card-header bg-dark text-white">
-                Available Tables
-            </div>
+        <div class="row g-4 align-items-start">
 
-            <div class="card-body">
-                <input type="text"
-                       id="tableSearch"
-                       class="form-control mb-3"
-                       placeholder="Search tables..." />
+            <!-- LEFT SIDE -->
+            <div class="col-lg-8">
 
-                <div class="d-flex
-                    justify-content-between
-                    align-items-center
-                    mb-2">
-                    <small class="text-muted">
-                        Select up to 10 tables
-                    </small>
+                <div class="query-card">
+                    <div class="query-card-header">
+                        <h2>Ask the database</h2>
 
-                    <small>
-                        <span id="selectedTableCount">
-                            @Model.SelectedTables.Count
-                        </span>/10 selected
-                    </small>
+                        <p>
+                            Select the relevant tables and
+                            describe the information you need.
+                        </p>
+                    </div>
+
+                    <div class="query-card-body">
+                        <form id="queryForm"
+                              asp-controller="Query"
+                              asp-action="Index"
+                              method="post">
+
+                            <div class="mb-3">
+                                <label asp-for="Question"
+                                       class="form-label fw-semibold">
+                                </label>
+
+                                <textarea asp-for="Question"
+                                          class="form-control
+                                question-input"
+                                          placeholder="Example: Show all employees ordered by salary"></textarea>
+
+                                <span asp-validation-for="Question"
+                                      class="text-danger">
+                                </span>
+                            </div>
+
+                            <button type="submit"
+                                    class="btn btn-primary
+                                generate-button">
+                                Generate SQL
+                            </button>
+                        </form>
+
+                        @if (Model.IsSqlSafe == true)
+                        {
+                            <div class="alert alert-success
+                                mt-4 mb-0">
+                                <strong>Safe query:</strong>
+                                @Model.SqlValidationMessage
+                            </div>
+                        }
+                        else if (Model.IsSqlSafe == false)
+                        {
+                            <div class="alert alert-danger
+                                mt-4 mb-0">
+                                <strong>
+                                    Request blocked:
+                                </strong>
+
+                                @Model.SqlValidationMessage
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(
+                            Model.GeneratedSql))
+                        {
+                            <div class="sql-container">
+                                <div class="form-label fw-bold">
+                                    Generated SQL
+                                </div>
+
+                                <pre id="generatedSql"
+                                     class="sql-code"><code>@Model.GeneratedSql</code></pre>
+
+                                <button type="button"
+                                        id="copySqlButton"
+                                        class="copy-button">
+                                    Copy
+                                </button>
+                            </div>
+                        }
+
+                        @if (Model.IsSqlSafe == true &&
+                             !string.IsNullOrWhiteSpace(
+                                 Model.GeneratedSql))
+                        {
+                            <form asp-controller="Query"
+                                  asp-action="Execute"
+                                  method="post"
+                                  class="mt-3">
+
+                                <input asp-for="Question"
+                                       type="hidden" />
+
+                                <input asp-for="GeneratedSql"
+                                       type="hidden" />
+
+                                @foreach (
+                                    string selectedTable
+                                    in Model.SelectedTables)
+                                {
+                                    <input type="hidden"
+                                           name="SelectedTables"
+                                           value="@selectedTable" />
+                                }
+
+                                <button type="submit"
+                                        class="btn btn-success
+                                    execute-button">
+                                    Execute Query
+                                </button>
+                            </form>
+                        }
+                    </div>
                 </div>
 
-                <span asp-validation-for="SelectedTables"
-                      class="text-danger d-block mb-2">
-                </span>
+                @if (Model.ResultColumns.Count > 0)
+                {
+                    <div class="query-card result-card">
+                        <div class="query-card-header
+                            d-flex
+                            justify-content-between
+                            align-items-center">
+                            <div>
+                                <h2>Query Results</h2>
 
-                <div id="tableList"
-                     style="max-height: 420px;
-                    overflow-y: auto;">
+                                <p>
+                                    The first 100 records
+                                    are displayed.
+                                </p>
+                            </div>
 
-                    @for (int index = 0;
-                          index < Model.AvailableTables.Count;
-                          index++)
-                    {
-                        string tableName =
-                            Model.AvailableTables[index];
-
-                        string checkboxId =
-                            $"table_{index}";
-
-                        bool isSelected =
-                            Model.SelectedTables.Contains(
-                                tableName,
-                                StringComparer.OrdinalIgnoreCase);
-
-                        <div class="form-check
-                            border-bottom
-                            py-2
-                            table-item">
-
-                            @if (isSelected)
-                            {
-                                <input class="form-check-input
-                                table-checkbox"
-                                       type="checkbox"
-                                       name="SelectedTables"
-                                       value="@tableName"
-                                       id="@checkboxId"
-                                       form="queryForm"
-                                       checked />
-                            }
-                            else
-                            {
-                                <input class="form-check-input
-                                table-checkbox"
-                                       type="checkbox"
-                                       name="SelectedTables"
-                                       value="@tableName"
-                                       id="@checkboxId"
-                                       form="queryForm" />
-                            }
-
-                            <label class="form-check-label"
-                                   for="@checkboxId">
-                                @tableName
-                            </label>
+                            <div class="result-information">
+                                @Model.ResultRows.Count rows
+                                ·
+                                @Model.ExecutionTimeMs ms
+                            </div>
                         </div>
-                    }
+
+                        <div class="table-responsive">
+                            <table class="table
+                                table-hover
+                                table-bordered
+                                result-table
+                                mb-0">
+                                <thead>
+                                    <tr>
+                                        @foreach (
+                                            string column
+                                            in Model.ResultColumns)
+                                        {
+                                            <th>@column</th>
+                                        }
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    @foreach (
+                                        Dictionary<string, object?> row
+                                        in Model.ResultRows)
+                                    {
+                                        <tr>
+                                            @foreach (
+                                                string column
+                                                in Model.ResultColumns)
+                                            {
+                                                <td title="@(
+                                                    row[column]?.ToString()
+                                                    ?? "NULL")">
+
+                                                    @(row[column]?.ToString()
+                                                        ?? "NULL")
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(
+                    Model.DatabaseSchema))
+                {
+                    <details class="schema-details">
+                        <summary>
+                            View selected database schema
+                        </summary>
+
+                        <pre class="schema-code"><code>@Model.DatabaseSchema</code></pre>
+                    </details>
+                }
+            </div>
+
+            <!-- RIGHT SIDE -->
+            <div class="col-lg-4">
+                <div class="query-card schema-panel">
+                    <div class="query-card-header">
+                        <h2>Database Tables</h2>
+
+                        <p>
+                            Search and select up to 10 tables.
+                        </p>
+                    </div>
+
+                    <div class="query-card-body">
+                        <input type="text"
+                               id="tableSearch"
+                               class="form-control
+                        table-search
+                        mb-3"
+                               placeholder="Search tables..." />
+
+                        <div class="d-flex
+                            justify-content-between
+                            align-items-center
+                            mb-3">
+                            <small class="text-muted">
+                                Available:
+                                @Model.AvailableTables.Count
+                            </small>
+
+                            <span class="selected-badge">
+                                <span id="selectedTableCount">
+                                    @Model.SelectedTables.Count
+                                </span>
+                                /10 selected
+                            </span>
+                        </div>
+
+                        <span asp-validation-for="SelectedTables"
+                              class="text-danger
+                            d-block mb-2">
+                        </span>
+
+                        <div id="tableList"
+                             class="table-list">
+
+                            @if (Model.AvailableTables.Count == 0)
+                            {
+                                <div class="empty-tables">
+                                    No tables were found.
+                                </div>
+                            }
+
+                            @for (
+                                int index = 0;
+                                index <
+                                Model.AvailableTables.Count;
+                                index++)
+                            {
+                                string tableName =
+                                    Model.AvailableTables[index];
+
+                                string checkboxId =
+                                    $"table_{index}";
+
+                                bool isSelected =
+                                    Model.SelectedTables.Contains(
+                                        tableName,
+                                        StringComparer
+                                            .OrdinalIgnoreCase);
+
+                                <div class="table-item">
+                                    @if (isSelected)
+                                    {
+                                        <input class="form-check-input
+                                        table-checkbox"
+                                               type="checkbox"
+                                               name="SelectedTables"
+                                               value="@tableName"
+                                               id="@checkboxId"
+                                               form="queryForm"
+                                               checked />
+                                    }
+                                    else
+                                    {
+                                        <input class="form-check-input
+                                        table-checkbox"
+                                               type="checkbox"
+                                               name="SelectedTables"
+                                               value="@tableName"
+                                               id="@checkboxId"
+                                               form="queryForm" />
+                                    }
+
+                                    <label class="table-label"
+                                           for="@checkboxId"
+                                           title="@tableName">
+                                        @tableName
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -290,17 +622,17 @@
         const tableItems =
             document.querySelectorAll(".table-item");
 
-        const checkboxes =
-            document.querySelectorAll(".table-checkbox");
-
         const selectedCount =
             document.getElementById(
                 "selectedTableCount");
 
-        searchInput.addEventListener(
+        const checkboxes =
+            document.querySelectorAll(
+                ".table-checkbox");
+
+        searchInput?.addEventListener(
             "input",
             function () {
-
                 const searchText =
                     this.value
                         .toLowerCase()
@@ -313,32 +645,30 @@
 
                     item.style.display =
                         tableName.includes(searchText)
-                            ? ""
+                            ? "flex"
                             : "none";
                 });
             });
 
         function updateSelectedCount() {
-            const checkedCount =
+            const count =
                 document.querySelectorAll(
                     ".table-checkbox:checked"
                 ).length;
 
-            selectedCount.textContent =
-                checkedCount;
+            selectedCount.textContent = count;
         }
 
         checkboxes.forEach(function (checkbox) {
             checkbox.addEventListener(
                 "change",
                 function () {
-
-                    const checkedCount =
+                    const count =
                         document.querySelectorAll(
                             ".table-checkbox:checked"
                         ).length;
 
-                    if (checkedCount > 10) {
+                    if (count > 10) {
                         this.checked = false;
 
                         alert(
@@ -349,6 +679,28 @@
                     updateSelectedCount();
                 });
         });
+
+        const copyButton =
+            document.getElementById(
+                "copySqlButton");
+
+        copyButton?.addEventListener(
+            "click",
+            async function () {
+                const sql =
+                    document.getElementById(
+                        "generatedSql"
+                    ).innerText;
+
+                await navigator.clipboard
+                    .writeText(sql);
+
+                this.textContent = "Copied";
+
+                setTimeout(() => {
+                    this.textContent = "Copy";
+                }, 1500);
+            });
 
         updateSelectedCount();
     </script>
